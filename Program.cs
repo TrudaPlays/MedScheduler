@@ -17,6 +17,7 @@ namespace MedScheduler
             while (running)
             {
                 Console.WriteLine("\nMenu:");
+                Console.WriteLine("Business hours are 08:00-17:00");
                 Console.WriteLine("1. Add Appointment");
                 Console.WriteLine("2. Cancel Appointment");
                 Console.WriteLine("3. Reschedule Appointment");
@@ -264,32 +265,68 @@ namespace MedScheduler
 
         private static void ListByDayMenu(AppointmentScheduler scheduler)
         {
-            try
+            while (true)
             {
-                DateTime day = PromptDateTime("\nEnter date (yyyy-MM-dd HH:mm will be truncated to date): ");
-                day = day.Date;  // Normalize to start of day
+                Console.WriteLine("\n--- List Appointments by Day ---");
+                Console.WriteLine("(type 'cancel' to return to main menu)\n");
 
-                var appts = scheduler.ListByDay(day).ToList();
+                Console.Write("Enter date (yyyy-MM-dd, example: 2025-11-15): ");
+                string input = Console.ReadLine()?.Trim() ?? "";
 
-                if (!appts.Any())
+                if (input.Equals("cancel", StringComparison.OrdinalIgnoreCase))
                 {
-                    Console.WriteLine($"\nNo appointments on {day:yyyy-MM-dd}.");
+                    Console.WriteLine("Cancelled. Returning to main menu.");
                     return;
                 }
 
-                Console.WriteLine($"\n--- Appointments on {day:yyyy-MM-dd} ---");
-                foreach (var appt in appts)
+                if (string.IsNullOrWhiteSpace(input))
                 {
-                    Console.WriteLine(appt);
+                    Console.WriteLine("Date cannot be empty. Please enter yyyy-MM-dd or 'cancel'.");
+                    continue;
                 }
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine("Invalid date format: " + ex.Message);
+
+                // Try to parse only the date part (yyyy-MM-dd)
+                if (DateTime.TryParseExact(input, "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime day))
+                {
+                    day = day.Date;  // make sure it's midnight
+
+                    try
+                    {
+                        var appts = scheduler.ListByDay(day).ToList();
+
+                        if (!appts.Any())
+                        {
+                            Console.WriteLine($"\nNo appointments on {day:yyyy-MM-dd}.");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"\n--- Appointments on {day:yyyy-MM-dd} ---");
+                            foreach (var appt in appts)
+                            {
+                                Console.WriteLine(appt);
+                            }
+                        }
+
+                        return;  // ← success → back to main menu
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Error retrieving appointments: " + ex.Message);
+                        Logger.Error($"Error in ListByDay: {ex.Message}");
+                        // continue loop → ask again
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Invalid date format. Please use yyyy-MM-dd (example: 2025-11-15). Try again.");
+                }
             }
         }
 
-        private static readonly string AppointmentsFile = "appointments.txt";
+        private static readonly string AppointmentsFile =
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                    "appointments.txt");
 
         private static void SaveAppointmentsMenu(AppointmentScheduler scheduler)
         {
