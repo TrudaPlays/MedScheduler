@@ -12,19 +12,56 @@ namespace MedScheduler
         public DateTime End { get; private set; }
         public string Room { get; }
 
-        //Create an overloaded constructor. In the Constructor, pass in all Class Variables
-        //For each one except the DateTimes, validate if they are null or Empty and throw an ArgumentException
-        //For the DateTimes, Check if end is before start using <= and throw an Argument Exception
-        //Then set the public variables
+        public Appointment(string id, string patientName, string providerName,
+                          DateTime start, DateTime end, string room)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                throw new ArgumentException("Appointment ID cannot be null or empty.", nameof(id));
 
+            if (string.IsNullOrWhiteSpace(patientName))
+                throw new ArgumentException("Patient name cannot be null or empty.", nameof(patientName));
 
-        //Create a void Reschedule() pass in two new DateTimes.
-        //If the new end is before the new start, throw an exception
-        //Otherwise set Start and End to the new values.
+            if (string.IsNullOrWhiteSpace(providerName))
+                throw new ArgumentException("Provider name cannot be null or empty.", nameof(providerName));
 
+            if (string.IsNullOrWhiteSpace(room))
+                throw new ArgumentException("Room cannot be null or empty.", nameof(room));
 
-        //Create a public override for ToString() have it print according to the assignment layout:
-        //[2025-11-12 09:30:12] INFO: Added [ A1001 ] 09:00–09:30 Dr. Nguyen Room 201 [2025-11-12 09:32:45] 
+            if (end <= start)
+                throw new ArgumentException("End time must be after start time.", nameof(end));
+
+            Id = id.Trim();
+            PatientName = patientName.Trim();
+            ProviderName = providerName.Trim();
+            Start = start;
+            End = end;
+            Room = room.Trim();
+        }
+
+        public void Reschedule(DateTime newStart, DateTime newEnd)
+        {
+            if (newEnd <= newStart)
+            {
+                throw new ArgumentException("New end time must be after new start time.");
+
+            }
+
+            var oldTimes = $"{Start:yyyy-MM-dd HH-mm}-{End:HH:mm}";
+            Start = newStart;
+            End = newEnd;
+
+            Logger.Info($"Rescheduled {Id}: {oldTimes} → {newStart:yyyy-MM-dd HH:mm}–{newEnd:HH:mm}");
+        }
+
+        public override string ToString()
+        {
+            // Format example from your comment:
+            // [2025-11-12 09:30:12] INFO: Added [ A1001 ] 09:00–09:30 Dr. Nguyen Room 201 [2025-11-12 09:32:45]
+            // But for the Appointment itself, we usually want a simpler summary.
+            // This version produces a clean, readable line suitable for both console and logs.
+
+            return $"[{Id}] {Start:yyyy-MM-dd HH:mm}–{End:HH:mm} {PatientName} with {ProviderName} in {Room}";
+        }
 
     }
 }
