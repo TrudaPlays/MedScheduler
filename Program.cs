@@ -29,6 +29,7 @@ namespace MedScheduler
 
                 switch ((Console.ReadLine() ?? "").Trim())
                 {
+
                     //For Cases 1-6, call the appropriate method
                     //Every case needs a break; statement
 
