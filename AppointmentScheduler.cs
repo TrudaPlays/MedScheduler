@@ -14,19 +14,36 @@ namespace MedScheduler
         private readonly TimeSpan _minDuration = new(0, 15, 0); // 15 minutes
 
         //Create a Public IReadOnlyList called Appointments. Call the private list as a Public List .AsReadOnly()
+        public IReadOnlyList<Appointment> Appointments => _appointments.AsReadOnly();
 
+        public void Add(Appointment appt)
+        {
+            if (appt == null)
+                throw new ArgumentNullException(nameof(appt));
+            ValidateTimeRules(appt.Start, appt.End);
+            EnsureNoConflicts(appt, excludeId: null);
 
-        //Create a public void to add appointments. 
-        //Be sure to run the business rules methods, ValidateTimeRules and EnsureNoConflicts
-        //Then add the appointment to the private list and report using the logger
+            _appointments.Add(appt);
+            Logger.Info($"Added [{appt.Id}] {appt.Start:HH:mm}-{appt.End:HH:mm} {appt.ProviderName} Room {appt.Room}");
 
+        }
 
+        public bool Cancel(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                return false;
 
-        //Make a boolean method to cancel an appointment, passing in a string for the id
-        //Iterate over the list and if the id doesn't exist return false
-        //If it exists, remove the appointment, log the information and return true
+            var appointment = _appointments
+                .FirstOrDefault(a => a.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
 
+            if (appointment == null)
+                return false;
 
+            _appointments.Remove(appointment);
+            Logger.Info($"Cancelled appointment {id} ({appointment.Start:yyyy-MM-dd HH:mm} - {appointment.ProviderName})");
+
+            return true;
+        }
 
         //Provided as an example for the other methods. No change needed.
         public void Reschedule(string id, DateTime newStart, DateTime newEnd)
@@ -45,20 +62,30 @@ namespace MedScheduler
             Logger.Info($"Rescheduled {before} -> {appt}");
         }
 
-        //Make an IEnumerable of type Appointment called ListByProvider and pass in a string of the provider's named
-        //Make a list of any appointment that provider is in and return them in order of start time
-
-
-
-        public IEnumerable<Appointment> ListByDay(DateTime day)
+       public IEnumerable<Appointment>ListByProvider(string provider)
         {
-            //Create a variable that gets day.Date from the DateTime in the Parameter.
-            //Then return the readonly list ordered by Start Date on the same day
+            if (string.IsNullOrWhiteSpace(provider))
+                return Enumerable.Empty<Appointment>();
+
+            return _appointments
+                .Where(a => a.ProviderName.Equals(provider, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(a => a.Start);
 
         }
+        
+        public IEnumerable<Appointment> ListByDay(DateTime day)
+        {
+            var targetDate = day.Date;
 
-        //Create a public IEnumarable of Appointments named All(). Return the list ordered by start time
+            return _appointments
+                .Where(a => a.Start.Date == targetDate)
+                .OrderBy(a => a.Start);
+        }
 
+        public IEnumerable<Appointment> All()
+        {
+            return _appointments.OrderBy(a => a.Start);
+        }
 
         //!!! You should not modify anything below this line
         // ---------- Business Rules ----------
