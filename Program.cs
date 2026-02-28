@@ -23,28 +23,24 @@ namespace MedScheduler
                 Console.WriteLine("4. List All Appointments");
                 Console.WriteLine("5. List by Provider");
                 Console.WriteLine("6. List by Day");
-                Console.WriteLine("7. Exit");
+                Console.WriteLine("7. Save appointments to file");
+                Console.WriteLine("8. Load appointments from file");
+                Console.WriteLine("9. Exit");
                 Console.Write("Choose: ");
 
                 string? choice = Console.ReadLine()?.Trim();
 
                 switch (choice)
                 {
-                    case "1":
-                        AddAppointmentMenu(scheduler);
-                        break;
-                    case "2":
-                        CancelAppointmentMenu(scheduler); break;
-                    case "3":
-                        RescheduleAppointmentMenu(scheduler); break;
-                    case "4":
-                        ListAllMenu(scheduler); break;
-                    case "5":
-                        ListByProviderMenu(scheduler); break;
-                    case "6":
-                        ListByDayMenu(scheduler); break;
-                    case "7": running = false; break;
-
+                    case "1": AddAppointmentMenu(scheduler); break;
+                    case "2": CancelAppointmentMenu(scheduler); break;
+                    case "3": RescheduleAppointmentMenu(scheduler); break;
+                    case "4": ListAllMenu(scheduler); break;
+                    case "5": ListByProviderMenu(scheduler); break;
+                    case "6": ListByDayMenu(scheduler); break;
+                    case "7": SaveAppointmentsMenu(scheduler); break;
+                    case "8": LoadAppointmentsMenu(scheduler); break;
+                    case "9": running = false; break;
                     default: Console.WriteLine("Invalid option."); break;
                 }
             }
@@ -63,100 +59,83 @@ namespace MedScheduler
 
                 try
                 {
-                    string id = Prompt("Enter Appointment ID: ").Trim();
-                    if (id.Equals("cancel", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine("Add operation cancelled.");
-                        return;
-                    }
+                    string id = GetValidString("Enter Appointment ID: ");
+                    string patient = GetValidString("Enter Patient Name: ");
+                    string provider = GetValidString("Enter Provider Name: ");
+                    string room = GetValidString("Enter Room: ");
 
-                    string patient = Prompt("Enter Patient Name: ").Trim();
-                    if (patient.Equals("cancel", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine("Add operation cancelled.");
-                        return;
-                    }
-
-                    string provider = Prompt("Enter Provider Name: ").Trim();
-                    if (provider.Equals("cancel", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine("Add operation cancelled.");
-                        return;
-                    }
-
-                    string room = Prompt("Enter Room: ").Trim();
-                    if (room.Equals("cancel", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine("Add operation cancelled.");
-                        return;
-                    }
-
-                    DateTime start;
-                    while (true)
-                    {
-                        try
-                        {
-                            start = PromptDateTime("Enter Start (yyyy-MM-dd HH:mm): ");
-                            break;
-                        }
-                        catch (ArgumentException)
-                        {
-                            Console.WriteLine("Invalid format. Use yyyy-MM-dd HH:mm (e.g. 2025-11-15 09:30). Try again.");
-                        }
-                    }
-                    if (start == DateTime.MinValue) // This won't happen, just defensive
-                        continue;
-
-                    DateTime end;
-                    while (true)
-                    {
-                        try
-                        {
-                            end = PromptDateTime("Enter End (yyyy-MM-dd HH:mm): ");
-                            break;
-                        }
-                        catch (ArgumentException)
-                        {
-                            Console.WriteLine("Invalid format. Use yyyy-MM-dd HH:mm (e.g. 2025-11-15 09:30). Try again.");
-                        }
-                    }
+                    DateTime start = GetValidDateTime("Enter Start (yyyy-MM-dd HH:mm): ");
+                    DateTime end = GetValidDateTime("Enter End (yyyy-MM-dd HH:mm): ");
 
                     var appt = new Appointment(id, patient, provider, start, end, room);
-
                     scheduler.Add(appt);
 
                     Console.WriteLine("\nAppointment added successfully.");
-                    return;  // ← success → back to main menu
+                    return;  // success → back to main menu
                 }
-                catch (OperationCanceledException) // if you decide to throw it later
+                catch (OperationCanceledException)
                 {
-                    Console.WriteLine("Add operation cancelled.");
+                    Console.WriteLine("\nAdd operation cancelled.");
                     return;
                 }
                 catch (DoubleBookingException ex)
                 {
                     Console.WriteLine("\nCannot add appointment: " + ex.Message);
                     Logger.Warn(ex.Message);
-                    // loop continues → ask again
+                    // loop continues → try again
                 }
                 catch (InvalidAppointmentTimeException ex)
                 {
                     Console.WriteLine("\nInvalid time: " + ex.Message);
                     Logger.Warn(ex.Message);
-                    // loop continues
                 }
                 catch (ArgumentException ex)
                 {
                     Console.WriteLine("\nInvalid input: " + ex.Message);
                     Logger.Warn($"Invalid input for new appointment: {ex.Message}");
-                    // loop continues
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("\nUnexpected error adding appointment. Please try again.");
                     Logger.Error($"Error adding appointment: {ex.Message}");
-                    // loop continues
                 }
+            }
+        }
+
+        // Helper: reusable non-throwing string input with cancel support
+        private static string GetValidString(string label)
+        {
+            while (true)
+            {
+                string input = Prompt(label).Trim();
+                if (input.Equals("cancel", StringComparison.OrdinalIgnoreCase))
+                    throw new OperationCanceledException();
+
+                if (!string.IsNullOrWhiteSpace(input))
+                    return input;
+
+                Console.WriteLine("Input cannot be empty. Try again or type 'cancel'.");
+            }
+        }
+
+        // Helper: reusable date/time input with cancel support (no exception on cancel)
+        private static DateTime GetValidDateTime(string label)
+        {
+            while (true)
+            {
+                Console.Write(label);
+                string input = Console.ReadLine()?.Trim() ?? "";
+
+                if (input.Equals("cancel", StringComparison.OrdinalIgnoreCase))
+                    throw new OperationCanceledException();
+
+                if (DateTime.TryParseExact(input, "yyyy-MM-dd HH:mm",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt))
+                {
+                    return dt;
+                }
+
+                Console.WriteLine("Invalid format. Use yyyy-MM-dd HH:mm (e.g. 2025-11-15 09:30). Try again or type 'cancel'.");
             }
         }
 
@@ -167,44 +146,34 @@ namespace MedScheduler
                 Console.WriteLine("\n--- Cancel Appointment ---");
                 Console.WriteLine("(type 'cancel' to return to main menu)\n");
 
-                string input = Prompt("Enter Appointment ID to cancel: ").Trim();
-
-                if (input.Equals("cancel", StringComparison.OrdinalIgnoreCase))
-                {
-                    Console.WriteLine("Cancel operation cancelled.");
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(input))
-                {
-                    Console.WriteLine("ID cannot be empty. Please enter a valid ID or type 'cancel'.");
-                    continue;
-                }
-
                 try
                 {
-                    if (scheduler.Cancel(input))
+                    string id = GetValidString("Enter Appointment ID to cancel: ");
+
+                    if (scheduler.Cancel(id))
                     {
-                        Console.WriteLine($"\nAppointment {input} cancelled successfully.");
-                        Logger.Info($"Cancelled appointment {input}");
-                        return;  // success → back to main menu
+                        Console.WriteLine($"\nAppointment {id} cancelled successfully.");
+                        Logger.Info($"Cancelled appointment {id}");
+                        return;
                     }
                     else
                     {
-                        Console.WriteLine($"\nAppointment '{input}' not found.");
-                        Logger.Warn($"Cancel attempt failed: appointment '{input}' not found");
-                        // loop continues → ask again
+                        Console.WriteLine($"\nAppointment '{id}' not found. Try again.");
+                        Logger.Warn($"Cancel attempt failed: appointment '{id}' not found");
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine("\nCancel operation cancelled.");
+                    return;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("\nError while trying to cancel appointment.");
-                    Logger.Error($"Error cancelling appointment '{input}': {ex.Message}");
-                    // loop continues
+                    Logger.Error($"Error cancelling appointment: {ex.Message}");
                 }
             }
         }
-
         private static void RescheduleAppointmentMenu(AppointmentScheduler scheduler)
         {
             while (true)
@@ -214,81 +183,45 @@ namespace MedScheduler
 
                 try
                 {
-                    string id = Prompt("Enter Appointment ID: ").Trim();
-                    if (id.Equals("cancel", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Console.WriteLine("Reschedule operation cancelled.");
-                        return;
-                    }
+                    string id = GetValidString("Enter Appointment ID: ");
 
-                    if (string.IsNullOrWhiteSpace(id))
-                    {
-                        Console.WriteLine("ID cannot be empty. Try again.");
-                        continue;
-                    }
-
-                    DateTime newStart;
-                    while (true)
-                    {
-                        try
-                        {
-                            newStart = PromptDateTime("Enter new Start (yyyy-MM-dd HH:mm): ");
-                            break;
-                        }
-                        catch (ArgumentException)
-                        {
-                            Console.WriteLine("Invalid format. Use yyyy-MM-dd HH:mm. Try again.");
-                        }
-                    }
-
-                    DateTime newEnd;
-                    while (true)
-                    {
-                        try
-                        {
-                            newEnd = PromptDateTime("Enter new End (yyyy-MM-dd HH:mm): ");
-                            break;
-                        }
-                        catch (ArgumentException)
-                        {
-                            Console.WriteLine("Invalid format. Use yyyy-MM-dd HH:mm. Try again.");
-                        }
-                    }
+                    DateTime newStart = GetValidDateTime("Enter new Start (yyyy-MM-dd HH:mm): ");
+                    DateTime newEnd = GetValidDateTime("Enter new End (yyyy-MM-dd HH:mm): ");
 
                     scheduler.Reschedule(id, newStart, newEnd);
 
                     Console.WriteLine($"\nAppointment {id} rescheduled successfully.");
-                    return;  // ← success → back to main menu
+                    return;
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine("\nReschedule operation cancelled.");
+                    return;
                 }
                 catch (KeyNotFoundException ex)
                 {
                     Console.WriteLine("\nAppointment not found: " + ex.Message);
                     Logger.Warn(ex.Message);
-                    // loop continues
                 }
                 catch (DoubleBookingException ex)
                 {
                     Console.WriteLine("\nCannot reschedule: " + ex.Message);
                     Logger.Warn(ex.Message);
-                    // loop continues
                 }
                 catch (InvalidAppointmentTimeException ex)
                 {
                     Console.WriteLine("\nInvalid new time: " + ex.Message);
                     Logger.Warn(ex.Message);
-                    // loop continues
                 }
                 catch (ArgumentException ex)
                 {
                     Console.WriteLine("\nInvalid input: " + ex.Message);
                     Logger.Warn($"Invalid input for reschedule: {ex.Message}");
-                    // loop continues
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine("\nUnexpected error rescheduling appointment. Please try again.");
                     Logger.Error($"Error rescheduling: {ex.Message}");
-                    // loop continues
                 }
             }
         }
@@ -355,6 +288,98 @@ namespace MedScheduler
                 Console.WriteLine("Invalid date format: " + ex.Message);
             }
         }
+
+        private static readonly string AppointmentsFile = "appointments.txt";
+
+        private static void SaveAppointmentsMenu(AppointmentScheduler scheduler)
+        {
+            try
+            {
+                using var writer = new StreamWriter(AppointmentsFile);
+
+                foreach (var appt in scheduler.Appointments)
+                {
+                    writer.WriteLine(
+                        $"{appt.Id}|" +
+                        $"{EscapePipe(appt.PatientName)}|" +
+                        $"{EscapePipe(appt.ProviderName)}|" +
+                        $"{appt.Start:yyyy-MM-dd HH:mm}|" +
+                        $"{appt.End:yyyy-MM-dd HH:mm}|" +
+                        $"{EscapePipe(appt.Room)}"
+                    );
+                }
+
+                Console.WriteLine($"\nSaved {scheduler.Appointments.Count} appointments to {AppointmentsFile}");
+                Logger.Info($"Saved {scheduler.Appointments.Count} appointments to file");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError saving appointments: {ex.Message}");
+                Logger.Error($"Failed to save appointments: {ex.Message}");
+            }
+        }
+
+        private static void LoadAppointmentsMenu(AppointmentScheduler scheduler)
+        {
+            if (!File.Exists(AppointmentsFile))
+            {
+                Console.WriteLine($"\nFile {AppointmentsFile} not found.");
+                return;
+            }
+
+            try
+            {
+                var lines = File.ReadAllLines(AppointmentsFile);
+                int loaded = 0;
+                int skipped = 0;
+
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
+                    var parts = line.Split('|');
+                    if (parts.Length != 6)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    try
+                    {
+                        string id = parts[0].Trim();
+                        string patient = UnescapePipe(parts[1].Trim());
+                        string provider = UnescapePipe(parts[2].Trim());
+                        DateTime start = DateTime.ParseExact(parts[3].Trim(), "yyyy-MM-dd HH:mm", null);
+                        DateTime end = DateTime.ParseExact(parts[4].Trim(), "yyyy-MM-dd HH:mm", null);
+                        string room = UnescapePipe(parts[5].Trim());
+
+                        var appt = new Appointment(id, patient, provider, start, end, room);
+                        scheduler.Add(appt);   // will validate rules & skip if conflict
+                        loaded++;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Warn($"Skipped invalid line in file: {line} → {ex.Message}");
+                        skipped++;
+                    }
+                }
+
+                Console.WriteLine($"\nLoaded {loaded} appointments from {AppointmentsFile}.");
+                if (skipped > 0)
+                    Console.WriteLine($"{skipped} lines were skipped (invalid format or conflicts).");
+
+                Logger.Info($"Loaded {loaded} appointments from file (skipped {skipped})");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\nError loading appointments: {ex.Message}");
+                Logger.Error($"Failed to load appointments: {ex.Message}");
+            }
+        }
+
+        // Helpers to handle names/rooms that might contain | character
+        private static string EscapePipe(string s) => s.Replace("|", "\\|");
+        private static string UnescapePipe(string s) => s.Replace("\\|", "|");
 
         //!!! No need to modify these methods. They are there to help you
         // ---------- Helpers ----------
