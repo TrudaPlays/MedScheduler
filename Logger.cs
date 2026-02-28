@@ -11,7 +11,20 @@ namespace MedScheduler
 
         //Create a public static void for Info, Warn and Error that accept a string message. 
         //For each one, call Write() and pass in the level and message variable
+        public static void Info(string message)
+        {
+            Write("INFO", message);
+        }
 
+        public static void Warn(string message)
+        {
+            Write("WARN", message);
+        }
+
+        public static void Error(string message)
+        {
+            Write("ERROR", message);
+        }
 
         private static void Write(string level, string msg)
         {
@@ -25,7 +38,6 @@ namespace MedScheduler
                 }
                 catch
                 {
-                    // As a last resort, avoid crashing the app because logging failed.
                     Console.Error.WriteLine("LOGGING FAILURE: " + line);
                 }
             }

@@ -55,11 +55,6 @@ namespace MedScheduler
 
         public override string ToString()
         {
-            // Format example from your comment:
-            // [2025-11-12 09:30:12] INFO: Added [ A1001 ] 09:00–09:30 Dr. Nguyen Room 201 [2025-11-12 09:32:45]
-            // But for the Appointment itself, we usually want a simpler summary.
-            // This version produces a clean, readable line suitable for both console and logs.
-
             return $"[{Id}] {Start:yyyy-MM-dd HH:mm}–{End:HH:mm} {PatientName} with {ProviderName} in {Room}";
         }
 
