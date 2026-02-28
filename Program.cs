@@ -8,9 +8,8 @@ namespace MedScheduler
     {
         private static void Main()
         {
-            //Create a var of your AppointmentScheduler class and initialize as new()
+            var scheduler = new AppointmentScheduler();
 
-            //Boilerplate to welcome the end user
             Console.WriteLine("=== Medical Appointment Scheduler ===");
 
             //User Input handled in a while loop
@@ -27,88 +26,211 @@ namespace MedScheduler
                 Console.WriteLine("7. Exit");
                 Console.Write("Choose: ");
 
-                switch ((Console.ReadLine() ?? "").Trim())
+                string? choice = Console.ReadLine()?.Trim();
+
+                switch (choice)
                 {
-
-                    //For Cases 1-6, call the appropriate method
-                    //Every case needs a break; statement
-
+                    case "1":
+                        AddAppointmentMenu(scheduler);
+                        break;
+                    case "2":
+                        CancelAppointmentMenu(scheduler); break;
+                    case "3":
+                        RescheduleAppointmentMenu(scheduler); break;
+                    case "4":
+                        ListAllMenu(scheduler); break;
+                    case "5":
+                        ListByProviderMenu(scheduler); break;
+                    case "6":
+                        ListByDayMenu(scheduler); break;
                     case "7": running = false; break;
+
                     default: Console.WriteLine("Invalid option."); break;
                 }
             }
             //Leave the user a Goodbye Message
-            Console.WriteLine("Goodbye!");
+            Console.WriteLine("\nGoodbye!");
         }
 
-        // ---------- Menus ----------
+        // ---------- Menu Handlers ----------
 
         private static void AddAppointmentMenu(AppointmentScheduler scheduler)
         {
-            //Make a try catch block that uses Prompt() to get the user for all appointment information
-            //In the try block, create the appointment and report if succesful
-            //If it fails, create a catch exception for: 
-            //DoubleBookingException
-            //InvalidAppointmentTimeException
-            //ArgumentException
-            //Exception (the catch all for anything else)
+            try
+            {
+                Console.WriteLine("\n --- Add New Appointment ---");
 
+                string id = Prompt("Enter Appointment ID: ");
+                string patient = Prompt("Enter Patient Name: ");
+                string provider = Prompt("Enter Provider Name: ");
+                string room = Prompt("Enter Room: ");
+                DateTime start = PromptDateTime("Enter Start (yyyy-MM-dd HH:mm): ");
+                DateTime end = PromptDateTime("Enter End (yyyy-MM-dd HH:mm): ");
+
+                var appt = new Appointment(id, patient, provider, start, end, room);
+
+                scheduler.Add(appt);
+
+                Console.WriteLine("Appointment added successfully.");
+                Logger.Info($"Added [{appt.Id}] {appt.Start:HH:mm}-{appt.End:HH:mm} {appt.ProviderName} Room {appt.Room}");
+
+
+            }
+            catch (DoubleBookingException ex)
+            {
+                Console.WriteLine("Cannot add appointment: " + ex.Message);
+                Logger.Warn(ex.Message);
+            }
+            catch (InvalidAppointmentTimeException ex)
+            {
+                Console.WriteLine("Invalid time: " + ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine("Invalid input: " + ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Unexpected error adding appointment.");
+                Logger.Error($"Error adding appointment: {ex.Message}");
+            }
         }
 
         private static void CancelAppointmentMenu(AppointmentScheduler scheduler)
         {
-            //Create a Try Catch block that prompts a user for an ID
-            //Inside the try block, check if the appointment exists and remove it
-            //If it doesn't exist, report that to the user and log it
-            //In the catch block, log an exception and write to the console that there was an error
+            try
+            {
+                Console.WriteLine("\n --- Cancel Appointment ---");
+                string id = Prompt("Enter Appointment ID to cancel: ");
 
+                if (scheduler.Cancel(id))
+                {
+                    Console.WriteLine($"Appointment {id} cancelled successfully.");
+                    Logger.Info($"Cancelled appointment {id}");
 
+                }
+                else
+                {
+                    Console.WriteLine($"Appointment {id} not found.");
+                    Logger.Warn($"Cancel attempt failed: appointment {id} not found");
+
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error cancelling appointment.");
+                Logger.Error($"Error cancelling appointment: {ex.Message}");
+
+            }
         }
 
         private static void RescheduleAppointmentMenu(AppointmentScheduler scheduler)
         {
-            //Make a try catch block that uses Prompt() to get the user for an appointment ID
-            //Get the new start and the new end, then attempt to use reschedule. Report if succesful
-            //If it fails, create a catch exception for: 
-            //KeyNotFound
-            //DoubleBookingException
-            //InvalidAppointmentTimeException
-            //ArgumentException
-            //Exception (the catch all for anything else)
 
+            try
+            {
+                Console.WriteLine("\n ---Reschedule Appointment ---");
+                string id = Prompt("Enter Appointment ID: ");
+                DateTime newStart = PromptDateTime("Enter new start (yyyy-MM-dd HH:mm): ");
+                DateTime newEnd = PromptDateTime("Enter new End (yyyy-MM-dd HH:mm): ");
+
+                scheduler.Reschedule(id, newStart, newEnd);
+
+                Console.WriteLine($"Appointment {id} rescheduled successfully.");
+                Logger.Info($"Rescheduled {id} to {newStart:yyyy-MM-dd HH:mm}-{newEnd:HH:mm}");
+
+            }
+            catch (KeyNotFoundException ex)
+            {
+                Console.WriteLine("Appointment not found: " + ex.Message);
+                Logger.Warn(ex.Message);
+            }
+            catch (DoubleBookingException ex)
+            {
+                Console.WriteLine("Cannot reschedule: " + ex.Message);
+                Logger.Warn(ex.Message);
+
+            }
+            catch (InvalidAppointmentTimeException ex)
+            {
+                Console.WriteLine("Invalid new time: " + ex.Message);
+                Logger.Warn(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine("Invalid input: " + ex.Message);
+                Logger.Warn($"Invalid input for reschedule: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Unexpected error rescheduling appointment.");
+                Logger.Error($"Error rescheduling: {ex.Message}");
+
+            }
         }
 
         private static void ListAllMenu(AppointmentScheduler scheduler)
         {
-            //convert all of the appointments into the scheduler into a list and store this in a var
-            //If the list is empty, report this to the user and return
+            var appointments = scheduler.Appointments.ToList();
 
-            //If not, use a foreach to write the contents of the list below this line-
+            if (!appointments.Any())
+            {
+                Console.WriteLine("No appointments scheduled.");
+                return;
+            }
+
             Console.WriteLine("\n--- All Appointments ---");
-
+            foreach (var appt in appointments)
+            {
+                Console.WriteLine(appt);
+            }
         }
 
         private static void ListByProviderMenu(AppointmentScheduler scheduler)
         {
-            //Use Prompt() to get the provider's name from the end user
-            //Then store the list by provider in a var
-            //If the var is empty, report this to the end user
+            string provider = Prompt("\nEnter provider name: ").Trim();
 
-            //If not, use a foreach to write all appointments below this line-
+            var appts = scheduler.ListByProvider(provider).ToList();
+
+            if (!appts.Any())
+            {
+                Console.WriteLine($"\nNo appointments found for {provider}.");
+                return;
+            }
+
             Console.WriteLine($"\n--- Appointments for {provider} ---");
-
+            foreach (var appt in appts)
+            {
+                Console.WriteLine(appt);
+            }
         }
 
         private static void ListByDayMenu(AppointmentScheduler scheduler)
         {
-            //Use the PromptDateTime method and store the value in a var. Use .Date to get the day
-            //Store the value of ListByDay(day).ToList() in a var
-            //Report if there are no dates that day and return
+            try
+            {
+                DateTime day = PromptDateTime("\nEnter date (yyyy-MM-dd HH:mm will be truncated to date): ");
+                day = day.Date;  // Normalize to start of day
 
+                var appts = scheduler.ListByDay(day).ToList();
 
-            //If not, use a foreach to write the list of all appointments below this line-
-            Console.WriteLine($"\n--- Appointments on {day:yyyy-MM-dd} ---");
+                if (!appts.Any())
+                {
+                    Console.WriteLine($"\nNo appointments on {day:yyyy-MM-dd}.");
+                    return;
+                }
 
+                Console.WriteLine($"\n--- Appointments on {day:yyyy-MM-dd} ---");
+                foreach (var appt in appts)
+                {
+                    Console.WriteLine(appt);
+                }
+            }
+            catch (ArgumentException ex)
+            {
+                Console.WriteLine("Invalid date format: " + ex.Message);
+            }
         }
 
         //!!! No need to modify these methods. They are there to help you
